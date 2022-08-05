@@ -1,0 +1,9 @@
+{
+    "require": {
+        "phpmailer/phpmailer": "^6.6",
+        "darkaonline/l5-swagger": "^8.3"
+    },
+    "require-dev": {
+        "theanik/laravel-more-command": "^1.3"
+    }
+}
