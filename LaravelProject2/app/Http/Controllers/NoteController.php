@@ -18,8 +18,8 @@ class NoteController extends Controller
     /**
      * @OA\Post(
      *   path="/api/createNote",
-     *   summary="Create Note",
-     *   description=" Create Note ",
+     *   summary="Create Notes",
+     *   description=" Create Notes ",
      *   @OA\RequestBody(
      *         @OA\JsonContent(),
      *         @OA\MediaType(
@@ -67,7 +67,7 @@ class NoteController extends Controller
 
                 ]);
                 return response()->json([
-                    'message' => 'Note created successfully',
+                    'message' => 'Notes created successfully',
                     'note' => $note
                 ], 200);
             }
@@ -82,7 +82,7 @@ class NoteController extends Controller
     }
     /** @OA\Post(
      * path="/api/getNoteById",
-     * summary="Read Note",
+     * summary="Read Notes",
      * description="Read Notes For an Particular User",
      * @OA\RequestBody(
      *    @OA\JsonContent(),
@@ -130,7 +130,7 @@ class NoteController extends Controller
         }
 
         $currentid = $currentUser->id;
-        //$note = Note::where('id', $request->id)->first();
+        //$note = Notes::where('id', $request->id)->first();
         $note = Notes::where('user_id', $currentid)->where('id', $request->id)->first();
 
         if (!$note) {
@@ -204,7 +204,7 @@ class NoteController extends Controller
      *            ),
      *        ),
      *    ),
-     *   @OA\Response(response=200, description="Note Updated Successfully"),
+     *   @OA\Response(response=200, description="Notes Updated Successfully"),
      *   @OA\Response(response=401, description="Invalid Authorization Token"),
      *   @OA\Response(response=404, description="Notes Not Found"),
      *   security={
@@ -212,7 +212,7 @@ class NoteController extends Controller
      *     }
      * )
      * This function takes the User access token and
-     * Note Id which user wants to update and 
+     * Notes Id which user wants to update and 
      * finds the note id if it is existed or not. 
      * If it is existed then, updates it successfully.
      *
@@ -251,7 +251,7 @@ class NoteController extends Controller
             return response()->json([
                 'status' => 200,
                 'note' => $note,
-                'mesaage' => 'Note Successfully updated',
+                'mesaage' => 'Notes Successfully updated',
             ]);
         } catch (FundooNotesException $exception) {
             return response()->json([
@@ -275,7 +275,7 @@ class NoteController extends Controller
      *            ),
      *        ),
      *    ),
-     *   @OA\Response(response=200, description="Note successfully deleted"),
+     *   @OA\Response(response=200, description="Notes successfully deleted"),
      *   @OA\Response(response=404, description="Notes not found"),
      *   @OA\Response(response=401, description="Invalid authorization token"),
      *   security={
@@ -318,7 +318,7 @@ class NoteController extends Controller
             } else {
                 $note->delete($note->id);
                 return response()->json([
-                    'mesaage' => 'Note deleted Successfully',
+                    'mesaage' => 'Notes deleted Successfully',
                 ], 200);
             }
         } catch (FundooNotesException $exception) {
@@ -344,7 +344,7 @@ class NoteController extends Controller
      *            ),
      *        ),
      *    ),
-     *   @OA\Response(response=200, description="Note successfully updated"),
+     *   @OA\Response(response=200, description="Notes successfully updated"),
      *   @OA\Response(response=402, description="Labels or Notes not found"),
      *   @OA\Response(response=401, description="Invalid authorization token"),
      *   security={
@@ -382,7 +382,7 @@ class NoteController extends Controller
         if ($labelnote) {
             return response()->json([
                 'status' => 400,
-                'message' => 'Note Already have a label'
+                'message' => 'Notes Already have a label'
             ], 409);
         }
 
@@ -403,8 +403,8 @@ class NoteController extends Controller
     /**
      * @OA\Post(
      *   path="/api/searchNotes",
-     *   summary="Search Note",
-     *   description=" Search Note ",
+     *   summary="Search Notes",
+     *   description=" Search Notes ",
      *   @OA\RequestBody(
      *         @OA\JsonContent(),
      *         @OA\MediaType(
@@ -416,7 +416,7 @@ class NoteController extends Controller
      *            ),
      *        ),
      *    ),
-     *   @OA\Response(response=200, description="Note Fetched Sucessfully"),
+     *   @OA\Response(response=200, description="Notes Fetched Sucessfully"),
      *   @OA\Response(response=404, description="Notes Not Found"),
      *   @OA\Response(response=401, description="Invalid Authorization Token"),
      *   security = {
@@ -470,5 +470,353 @@ class NoteController extends Controller
             'status' => 403,
             'message' => 'Invalid authorization token'
         ], 403);
+    }
+
+    function pinNoteById(Request $request)
+    {
+        try {
+
+            $validator = Validator::make($request->all(), [
+                'id' => 'required|integer',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json($validator->errors()->toJson(), 400);
+            }
+
+            $noteObject = new Notes();
+            $currentUser = JWTAuth::authenticate($request->id);
+            $note = $noteObject->noteId($request->id);
+
+            if (!$note) {
+                Log::error('Notes Not Found', ['user' => $currentUser, 'id' => $request->id]);
+                throw new FundooNotesException('Notes Not Found', 404);
+            }
+
+            if ($note->isPinned == 0) {
+                if ($note->isArchived == 1) {
+                    $note->isArchived = 0;
+                    $note->save();
+                }
+                $note->isPinned = 1;
+                $note->save();
+
+                log::info('Notes pinned successfully');
+                return response()->json([
+                    'message' => 'Notes pinned Successfully',
+                ], 201);
+            }
+        } catch (FundooNotesException $exception) {
+            return response()->json([
+                'message' => $exception->message()
+            ], $exception->statusCode());
+        }
+    }
+
+    function unpinNoteById(Request $request)
+    {
+        try {
+
+            $validator = Validator::make($request->all(), [
+                'id' => 'required',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json($validator->errors()->toJson(), 400);
+            }
+
+            $noteObject = new Notes();
+            $currentUser = JWTAuth::parseToken()->authenticate();
+            $note = $noteObject->noteId($request->id);
+
+            if (!$note) {
+                Log::error('Notes Not Found', ['user' => $currentUser, 'id' => $request->id],);
+                return response()->json([
+                    'message' => 'Notes not found'
+                ], 401);
+            }
+
+            if ($note->isPinned == 1) {
+                $note->isPinned = 0;
+                $note->save();
+
+                Log::info('note unpin', ['user_id' => $currentUser, 'note_id' => $request->id]);
+                return response()->json([
+                    'status' => 201,
+                    'message' => 'Notes Unpinned Sucessfully'
+                ], 201);
+            }
+        } catch (FundooNotesException $exception) {
+            return response()->json([
+                'message' => $exception->message()
+            ], $exception->statusCode());
+        }
+    }
+
+
+    function archiveNoteById(Request $request)
+    {
+        try {
+
+            $validator = Validator::make($request->all(), [
+                'id' => 'required',
+            ]);
+            if ($validator->fails()) {
+                return response()->json($validator->errors()->toJson(), 400);
+            }
+
+            $noteObject = new Notes();
+            $currentUser = JWTAuth::parseToken()->authenticate();
+            $note = $noteObject->noteId($request->id);
+
+            if (!$note) {
+                Log::error('Notes Not Found', ['user' => $currentUser, 'id' => $request->id]);
+                return response()->json([
+                    'message' => 'Notes Not Found'
+                ], 401);
+            }
+
+            if ($note->isArchived == 0) {
+                if ($note->isPinned == 1) {
+                    $note->isPinned = 0;
+                    $note->save();
+                }
+                $note->isArchived = 1;
+                $note->save();
+
+                Log::info('notes Archived', ['user_id' => $currentUser, 'note_id' => $request->id]);
+                return response()->json([
+                    'message' => 'Notes Archived Sucessfully'
+                ], 201);
+            }
+        } catch (FundooNotesException $exception) {
+            return response()->json([
+                'message' => $exception->message()
+            ], $exception->statusCode());
+        }
+    }
+
+    function unarchiveNoteById(Request $request)
+    {
+        try {
+
+            $validator = Validator::make($request->all(), [
+                'id' => 'required',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json($validator->errors()->toJson(), 400);
+            }
+
+            $noteObject = new Notes();
+            $currentUser = JWTAuth::parseToken()->authenticate();
+            $note = $noteObject->noteId($request->id);
+
+            if (!$note) {
+                Log::error('Notes Not Found', ['user' => $currentUser, 'id' => $request->id]);
+                return response()->json([
+                    'message' => 'Notes not Found'
+                ], 404);
+            }
+
+            if ($note->isArchived == 1) {
+                $note->isArchived = 0;
+                $note->save();
+
+                Log::info('notes UnArchived', ['user_id' => $currentUser, 'note_id' => $request->id]);
+                return response()->json([
+                    'status' => 201,
+                    'message' => 'Notes UnArchived Sucessfully'
+                ], 201);
+            }
+        } catch (FundooNotesException $exception) {
+            return response()->json([
+                'message' => $exception->message()
+            ], $exception->statusCode());
+        }
+    }
+
+
+
+    function getAllPinnedNotes()
+    {
+        try {
+            $currentUser = JWTAuth::parseToken()->authenticate();
+            if (!$currentUser) {
+                Log::error('Invalid Authorization Token');
+                throw new FundooNotesException('Invalid Authorization Token', 401);
+            } else {
+                $userNotes = Notes::getPinnedNotesandItsLabels($currentUser);
+                if (!$userNotes) {
+                    Log::error('Notes Not Found For User:: ' . $currentUser->id);
+                    throw new FundooNotesException('Notes Not Found', 404);
+                }
+
+
+                return response()->json([
+                    'message' => 'Fetched All Pinned Notes Successfully',
+                    'notes' => $userNotes
+                ], 200);
+            }
+        } catch (FundooNotesException $exception) {
+            return response()->json([
+                'message' => $exception->message()
+            ], $exception->statusCode());
+        }
+    }
+
+    public function getAllArchivedNotes()
+    {
+        try {
+            $currentUser = JWTAuth::parseToken()->authenticate();
+            if (!$currentUser) {
+                Log::error('Invalid Authorization Token');
+                throw new FundooNotesException('Invalid Authorization Token', 401);
+            } else {
+                $userNotes = Notes::getArchivedNotesandItsLabels($currentUser);
+                if (!$userNotes) {
+                    Log::error('Notes Not Found For User:: ' . $currentUser->id);
+                    throw new FundooNotesException('Notes Not Found', 404);
+                }
+                //Cache::remember('notes');
+
+                Log::info('Fetched All Archived Notes Successfully');
+                return response()->json([
+                    'message' => 'Fetched All Archived Notes Successfully',
+                    'notes' => $userNotes
+                ], 200);
+            }
+        } catch (FundooNotesException $exception) {
+            return response()->json([
+                'message' => $exception->message()
+            ], $exception->statusCode());
+        }
+    }
+
+    function trashNoteById(Request $request)
+    {
+        try {
+
+            $validator = Validator::make($request->all(), [
+                'id' => 'required|integer',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json($validator->errors()->toJson(), 400);
+            }
+
+            $noteObject = new Notes();
+            $currentUser = JWTAuth::authenticate($request->id);
+            $note = $noteObject->noteId($request->id);
+
+            if (!$note) {
+                Log::error('Notes Not Found', ['user' => $currentUser, 'id' => $request->id]);
+                throw new FundooNotesException('Notes Not Found', 404);
+            }
+
+            if ($note->isTrashed == 0) {
+                // if ($note->isPinned == 1) {
+                //     $note->isPinned = 0;
+                //     $note->save();
+
+                // }
+                if ($note->isArchived == 1) {
+                    $note->isArchived = 0;
+                    $note->save();
+                }
+
+                $note->isTrashed = 1;
+                $note->save();
+
+                log::info('Notes Trashed successfully');
+                return response()->json([
+                    'message' => 'Notes Trashed Successfully',
+                ], 201);
+            }
+        } catch (FundooNotesException $exception) {
+            return response()->json([
+                'message' => $exception->message()
+            ], $exception->statusCode());
+        }
+    }
+
+    function restoreNoteById(Request $request)
+    {
+        try {
+
+            $validator = Validator::make($request->all(), [
+                'id' => 'required',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json($validator->errors()->toJson(), 400);
+            }
+
+            $noteObject = new Notes();
+            $currentUser = JWTAuth::parseToken()->authenticate();
+            $note = $noteObject->noteId($request->id);
+
+            if (!$note) {
+                Log::error('Notes Not Found', ['user' => $currentUser, 'id' => $request->id],);
+                return response()->json([
+                    'message' => 'Notes not found'
+                ], 401);
+            }
+
+            if ($note->isTrashed == 1) {
+                $note->isTrashed = 0;
+                $note->save();
+
+                Log::info('note restored', ['user_id' => $currentUser, 'note_id' => $request->id]);
+                return response()->json([
+                    'status' => 201,
+                    'message' => 'Notes restored Sucessfully'
+                ], 201);
+            }
+        } catch (FundooNotesException $exception) {
+            return response()->json([
+                'message' => $exception->message()
+            ], $exception->statusCode());
+        }
+    }
+
+    function getAllTrashedNotes()
+    {
+        try {
+            $currentUser = JWTAuth::parseToken()->authenticate();
+            if (!$currentUser) {
+                Log::error('Invalid Authorization Token');
+                throw new FundooNotesException('Invalid Authorization Token', 401);
+            } else {
+                $userNotes = Notes::getTrashedNotesandItsLabels($currentUser);
+                if (!$userNotes) {
+                    Log::error('Notes Not Found For User:: ' . $currentUser->id);
+                    throw new FundooNotesException('Notes Not Found', 404);
+                }
+                return response()->json([
+                    'message' => 'Fetched All Trashed Notes Successfully',
+                    'notes' => $userNotes
+                ], 200);
+            }
+        } catch (FundooNotesException $exception) {
+            return response()->json([
+                'message' => $exception->message()
+            ], $exception->statusCode());
+        }
+    }
+
+    public function colourNoteById(Request $request,)
+    {
+        $request->validate([
+            'id' => 'required',
+            'colour' => 'required',
+
+        ]);
+
+        $data = DB::table('notes')->where('id', $request->id)->update(['colour' => $request->colour]);
+        if (!$data) {
+            Log::channel('custom')->error("You entered invalid id");
+        }
+        return response()->json(['data' => $data, 'success' => 200]);
     }
 }

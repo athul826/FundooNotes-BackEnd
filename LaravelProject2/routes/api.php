@@ -42,4 +42,15 @@ Route::group(['middleware' => ['jwt.verify']], function () {
     Route::get('getAllLabel', [LabelController::class, 'getAllLabel']);
     Route::post('updateLabelById', [LabelController::class, 'updateLabelById']);
     Route::delete('deleteLabelById', [LabelController::class, 'deleteLabelById']);
+
+    Route::post('pinnote', [NoteController::class, 'pinNoteById']);
+    Route::post('unpinnote', [NoteController::class, 'unpinNoteById']);
+    Route::post('archivenote', [NoteController::class, 'archiveNoteById']);
+    Route::post('unarchivenote', [NoteController::class, 'unarchiveNoteById']);
+    Route::post('colournote', [NoteController::class, 'colourNoteById']);
+    Route::get('getallpinnednotes', [NoteController::class, 'getAllPinnedNotes']);
+    Route::get('getallarchivednotes', [NoteController::class, 'getAllArchivedNotes']);
+    Route::post('trashNoteById', [NoteController::class, 'trashNoteById']);
+    Route::post('restoreNoteById', [NoteController::class, 'restoreNoteById']);
+    Route::get('getAllTrashedNotes', [NoteController::class, 'getAllTrashedNotes']);
 });

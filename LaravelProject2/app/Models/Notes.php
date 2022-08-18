@@ -65,15 +65,76 @@ class Notes extends Model implements JWTSubject
     }
 
     // 
+    // public static function getAllNotes($user)
+    // {
+    //     $note = User::leftjoin('notes', 'notes.user_id', '=', 'users.id')
+    //         ->leftJoin('label_notes', 'label_notes.note_id', '=', 'notes.id')
+    //         ->leftJoin('lables', 'lables.id', '=', 'label_notes.label_id')
+
+    //         ->select('users.id', 'notes.id', 'notes.title', 'notes.description', 'lables.labelname')
+    //         ->where([['notes.user_id', '=', $user->id]])
+    //         ->get();
+    //     return $note;
+    // }
+    public static function getPinnedNotesandItsLabels($user)
+    {
+        $notes = Notes::leftJoin('label_notes', 'label_notes.note_id', '=', 'notes.id')
+            ->leftJoin('lables', 'lables.id', '=', 'label_notes.label_id')
+            ->select('notes.id', 'notes.title', 'notes.description', 'notes.isPinned', 'notes.isArchived', 'notes.colour', 'lables.labelname')
+            ->where([['notes.user_id', '=', $user->id], ['isPinned', '=', 1]]) ->get();
+
+        return $notes;
+    }
+
+     /**
+     * Function to get the archived notes and their labels
+     * Passing the user as a parameter
+     * 
+     * @return array
+     */
+    public static function getArchivedNotesandItsLabels($user)
+    {
+        $notes = Notes::leftJoin('label_notes', 'label_notes.note_id', '=', 'notes.id')
+            ->leftJoin('lables', 'lables.id', '=', 'label_notes.label_id')
+            ->select('notes.id', 'notes.title', 'notes.description', 'notes.isPinned', 'notes.isArchived', 'notes.colour', 'lables.labelname')
+            ->where([['notes.user_id', '=', $user->id], ['isArchived', '=', 1]]) ->get();
+
+        return $notes;
+    }
+
+    
     public static function getAllNotes($user)
     {
         $note = User::leftjoin('notes', 'notes.user_id', '=', 'users.id')
             ->leftJoin('label_notes', 'label_notes.note_id', '=', 'notes.id')
             ->leftJoin('lables', 'lables.id', '=', 'label_notes.label_id')
 
-            ->select('users.id', 'notes.id', 'notes.title', 'notes.description', 'lables.labelname')
-            ->where([['notes.user_id', '=', $user->id]])
+            ->select('users.id', 'notes.id', 'notes.title', 'notes.description', 'notes.isPinned', 'notes.isArchived', 'notes.colour', 'lables.labelname')
+            ->where([['notes.user_id', '=', $user->id],['isArchived', '=', 0], ['isPinned', '=', 0],['isTrashed', '=', 0]])
             ->get();
+
+
         return $note;
+    }
+    // public static function getAllNotes($user)
+    // {
+    //     $note = User::leftjoin('notes', 'notes.user_id', '=', 'users.id')
+    //         ->leftJoin('label_notes', 'label_notes.note_id', '=', 'notes.id')
+    //         ->leftJoin('lables', 'lables.id', '=', 'label_notes.label_id')
+
+    //         ->select('users.id', 'notes.id', 'notes.title', 'notes.description', 'lables.labelname')
+    //         ->where([['notes.user_id', '=', $user->id]])
+    //         ->get();
+    //     return $note;
+    // }
+
+    public static function getTrashedNotesandItsLabels($user)
+    {
+        $notes = Notes::leftJoin('label_notes', 'label_notes.note_id', '=', 'notes.id')
+            ->leftJoin('lables', 'lables.id', '=', 'label_notes.label_id')
+            ->select('notes.id', 'notes.title', 'notes.description', 'notes.isPinned', 'notes.isArchived', 'notes.colour', 'lables.labelname')
+            ->where([['notes.user_id', '=', $user->id],['isArchived', '=', 0], ['isPinned', '=', 0], ['isTrashed', '=', 1]]) ->get();
+
+        return $notes;
     }
 }
